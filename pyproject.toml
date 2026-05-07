@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gvfa"
+version = "0.1.0"
+description = "Graph Vector Function Architecture - Zero-shot graph representations using Hyperdimensional Computing"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "GVFA Authors"}
+]
+keywords = ["graph neural networks", "hyperdimensional computing", "VFA", "node classification"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "torch>=1.9.0",
+    "numpy>=1.19.0",
+    "scikit-learn>=0.24.0",
+]
+
+[project.optional-dependencies]
+experiments = [
+    "torch-geometric>=2.0.0",
+]
+ui = [
+    "streamlit>=1.20.0",
+]
+dev = [
+    "pytest>=6.0",
+    "black",
+    "isort",
+]
+
+[project.urls]
+Repository = "https://github.com/example/gvfa"
+
+[tool.setuptools.packages.find]
+include = ["gvfa*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+line_length = 88

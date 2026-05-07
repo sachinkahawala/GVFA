@@ -1,0 +1,54 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# ── Virtual environments ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Build / packaging ─────────────────────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+MANIFEST
+
+# ── Data ──────────────────────────────────────────────────────────────────────
+# Datasets are large binary files and should be downloaded/generated locally.
+data/
+
+# ── Figures / outputs ─────────────────────────────────────────────────────────
+# Generated plots and visualisations.
+figures/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── IDE / editor ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS artefacts ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+nul
+
+# ── Testing / coverage ────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── Legacy code ───────────────────────────────────────────────────────────────
+Old/
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.log
