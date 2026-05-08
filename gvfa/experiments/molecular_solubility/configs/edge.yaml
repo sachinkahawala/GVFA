@@ -1,0 +1,63 @@
+# GVFA + bond features + Hadamard edge binding.
+#
+# Adds the 4-column bond featurizer and a Hadamard edge binder on top of
+# `base.yaml`. Atom features stay at the small set (8 columns) so the only
+# thing that changed vs. base is "edges are now in the message-passing".
+
+seed: 42
+
+dataset:
+  kind: csv
+  csv_path: data/solubility/train.csv
+  test_csv_path: data/solubility/test.csv
+  smiles_col: smiles_canon
+  target_col: LogS
+
+split:
+  kind: explicit
+
+featurizer:
+  atom_features:
+    - atomic_number
+    - degree
+    - valence_electrons
+    - hybridization
+    - hbond_flags
+  bond_features:
+    - bond_type
+    - is_conjugated
+    - in_ring
+    - bond_length_3d
+
+projection:
+  D: 5000
+  kind: gaussian
+  seed: 42
+  sign_normalize: true
+  scaler:
+    enabled: false
+  bond_seed: 43
+  bond_scaler:
+    enabled: false
+
+edge_binder:
+  kind: hadamard
+
+encoder:
+  num_layers: 3
+  phi: phi3
+  normalize: sign
+
+augmentation:
+  kind: null
+
+pooler:
+  kind: sum
+
+head:
+  kind: ridge
+  alpha: 1.0
+
+logging:
+  out_dir: results/molecular_solubility
+  run_name: edge

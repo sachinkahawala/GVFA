@@ -1,0 +1,63 @@
+# Explicit Hadamard binding twin of `binding_circular.yaml`.
+#
+# Hadamard (element-wise) binding is the variant used by the legacy
+# `Molecular_Solubility/GVFA_with_edge` code. With sign-normalized HVs
+# (i.e. ±1 entries), it preserves bipolarity exactly (a*b ∈ {-1, +1}).
+
+seed: 42
+
+dataset:
+  kind: csv
+  csv_path: data/solubility/train.csv
+  test_csv_path: data/solubility/test.csv
+  smiles_col: smiles_canon
+  target_col: LogS
+
+split:
+  kind: explicit
+
+featurizer:
+  atom_features:
+    - atomic_number
+    - degree
+    - valence_electrons
+    - hybridization
+    - hbond_flags
+  bond_features:
+    - bond_type
+    - is_conjugated
+    - in_ring
+    - bond_length_3d
+
+projection:
+  D: 5000
+  kind: gaussian
+  seed: 42
+  sign_normalize: true
+  scaler:
+    enabled: false
+  bond_seed: 43
+  bond_scaler:
+    enabled: false
+
+edge_binder:
+  kind: hadamard
+
+encoder:
+  num_layers: 3
+  phi: phi3
+  normalize: sign
+
+augmentation:
+  kind: null
+
+pooler:
+  kind: sum
+
+head:
+  kind: ridge
+  alpha: 1.0
+
+logging:
+  out_dir: results/molecular_solubility
+  run_name: binding_hadamard

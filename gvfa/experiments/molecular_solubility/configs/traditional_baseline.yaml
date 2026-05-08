@@ -1,0 +1,31 @@
+# Traditional ML baseline — RDKit hand-crafted descriptors + XGBoost.
+#
+# Skips the entire GVFA path (descriptors_only: true). Useful as a
+# sanity-check: the GVFA variants ought to at least match this on the
+# in-house test set.
+
+seed: 42
+descriptors_only: true
+
+dataset:
+  kind: csv
+  csv_path: data/solubility/train.csv
+  test_csv_path: data/solubility/test.csv
+  smiles_col: smiles_canon
+  target_col: LogS
+
+split:
+  kind: explicit
+
+# featurizer/projection/edge_binder/encoder/augmentation/pooler are all
+# unused when descriptors_only=true — they're left at defaults.
+
+head:
+  kind: xgboost
+  n_estimators: 2000
+  max_depth: 7
+  learning_rate: 0.05
+
+logging:
+  out_dir: results/molecular_solubility
+  run_name: traditional_baseline

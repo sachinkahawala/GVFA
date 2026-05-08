@@ -1,0 +1,131 @@
+{
+  "config": {
+    "seed": 42,
+    "descriptors_only": false,
+    "dataset": {
+      "kind": "csv",
+      "csv_path": "data/solubility/train.csv",
+      "test_csv_path": "data/solubility/test.csv",
+      "smiles_col": "smiles_canon",
+      "target_col": "LogS",
+      "moleculenet_name": null,
+      "moleculenet_root": "./data"
+    },
+    "split": {
+      "kind": "explicit",
+      "train_ratio": 0.8,
+      "k": 5,
+      "seed": 42
+    },
+    "featurizer": {
+      "atom_features": [
+        "atomic_number",
+        "degree",
+        "valence_electrons",
+        "hybridization",
+        "hbond_flags"
+      ],
+      "bond_features": [
+        "bond_type",
+        "is_conjugated",
+        "in_ring",
+        "bond_length_3d"
+      ],
+      "descriptors": false,
+      "descriptor_names": null,
+      "embed_seed": 61453
+    },
+    "projection": {
+      "D": 5000,
+      "kind": "orthogonal",
+      "seed": 42,
+      "sign_normalize": true,
+      "scaler": {
+        "enabled": false,
+        "binary_cols": [],
+        "minmax_cols": [],
+        "tanh_cols": {},
+        "use_extended_atom_defaults": false,
+        "use_default_bond_cols": false
+      },
+      "bond_D": null,
+      "bond_kind": "orthogonal",
+      "bond_seed": 43,
+      "bond_sign_normalize": null,
+      "bond_scaler": {
+        "enabled": false,
+        "binary_cols": [],
+        "minmax_cols": [],
+        "tanh_cols": {},
+        "use_extended_atom_defaults": false,
+        "use_default_bond_cols": false
+      }
+    },
+    "edge_binder": {
+      "kind": "hadamard"
+    },
+    "encoder": {
+      "num_layers": 3,
+      "phi": "phi3",
+      "normalize": "sign",
+      "kappa": 1.0
+    },
+    "augmentation": {
+      "kind": null,
+      "hop_decay": 0.85,
+      "sigma_pi_orders": [
+        0,
+        1,
+        2
+      ],
+      "sigma_pi_bind_kind": "hadamard",
+      "normalize": true
+    },
+    "pooler": {
+      "kind": "sum"
+    },
+    "head": {
+      "kind": "ridge",
+      "alpha": 1.0,
+      "alphas": [
+        0.001,
+        0.01,
+        0.1,
+        1.0,
+        10.0,
+        100.0
+      ],
+      "kernel_gamma": null,
+      "n_estimators": 2000,
+      "max_depth": 7,
+      "learning_rate": 0.05
+    },
+    "logging": {
+      "out_dir": "results/molecular_solubility",
+      "run_name": "edge_orthogonal"
+    }
+  },
+  "result": {
+    "run_name": "edge_orthogonal",
+    "elapsed_sec": 593.6503858566284,
+    "folds": [
+      {
+        "rmse": 0.783744720436132,
+        "mae": 0.6075740696458428,
+        "r2": 0.8527218651804243,
+        "pearson": 0.9239019643698609,
+        "fold": 0,
+        "n_train": 17929,
+        "n_test": 1282
+      }
+    ],
+    "rmse_mean": 0.783744720436132,
+    "mae_mean": 0.6075740696458428,
+    "r2_mean": 0.8527218651804243,
+    "pearson_mean": 0.9239019643698609,
+    "rmse_std": 0.0,
+    "mae_std": 0.0,
+    "r2_std": 0.0,
+    "pearson_std": 0.0
+  }
+}

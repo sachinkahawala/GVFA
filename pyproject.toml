@@ -34,6 +34,12 @@ dependencies = [
 experiments = [
     "torch-geometric>=2.0.0",
 ]
+chem = [
+    "rdkit>=2022.09.1",
+    "xgboost>=1.7",
+    "pandas>=1.5",
+    "pyyaml>=6.0",
+]
 ui = [
     "streamlit>=1.20.0",
 ]

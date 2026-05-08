@@ -1,0 +1,78 @@
+# Sigma-Pi polynomial expansion of the final layer's hypervectors.
+#
+# Operates on top of the `edge_bounded` setup but replaces the standard
+# "concat-all-levels" graph readout with a Sigma-Pi expansion of the
+# encoder's last layer. Orders [0, 1, 2] correspond to identity + 1st +
+# 2nd order polynomial terms.
+
+seed: 42
+
+dataset:
+  kind: csv
+  csv_path: data/solubility/train.csv
+  test_csv_path: data/solubility/test.csv
+  smiles_col: smiles_canon
+  target_col: LogS
+
+split:
+  kind: explicit
+
+featurizer:
+  atom_features:
+    - atomic_number
+    - degree
+    - valence_electrons
+    - hybridization
+    - aromaticity_z
+    - formal_charge
+    - hbond_flags
+    - chirality
+    - num_attached_h
+    - gasteiger_charge
+    - crippen_logp
+    - tpsa_contrib
+    - is_in_aromatic_ring
+    - smallest_ring_size
+  bond_features:
+    - bond_type
+    - is_conjugated
+    - in_ring
+    - bond_length_3d
+
+projection:
+  D: 5000
+  kind: orthogonal
+  seed: 42
+  sign_normalize: true
+  scaler:
+    enabled: true
+    use_extended_atom_defaults: true
+  bond_kind: orthogonal
+  bond_seed: 43
+  bond_scaler:
+    enabled: true
+    use_default_bond_cols: true
+
+edge_binder:
+  kind: hadamard
+
+encoder:
+  num_layers: 3
+  phi: phi3
+  normalize: sign
+
+augmentation:
+  kind: sigma_pi
+  sigma_pi_orders: [0, 1, 2]
+  sigma_pi_bind_kind: hadamard
+  normalize: true
+
+pooler:
+  kind: sum
+
+head:
+  kind: ridgecv
+
+logging:
+  out_dir: results/molecular_solubility
+  run_name: sigma_pi
