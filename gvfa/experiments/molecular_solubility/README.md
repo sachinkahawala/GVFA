@@ -20,9 +20,10 @@ SMILES + target
    ↓ EdgeBinder        (off | hadamard | circular)
    ↓ Encoder           (EdgeAwareGVFA — base GVFA when no binder is configured)
    ↓ Augmentation      (off | reservoir | sigma_pi | reservoir_sigma_pi)
-   ↓ Pooler            (sum | mean)
+   ↓ Pooler            (sum | mean | multi_stat)
+   ↓ Size-aware post   (optional: 1/N^p scaling + appended size feature)
    ↓ Head              (ridge | ridgecv | kernel_ridge | xgboost | random_forest)
-   ↓ Evaluator         (RMSE / MAE / R² / Pearson) → JSON + summary.csv
+   ↓ Evaluator         (RMSE / STD_err / MAE / R² / Pearson / Pearson²) → JSON + summary.csv
 ```
 
 The `descriptors_only: true` config flag short-circuits everything between
@@ -88,17 +89,100 @@ Loads every YAML under `configs/`, runs each, and prints a summary table.
 
 ## Ablations bundled
 
-| YAML                      | Encoder path                                           | Head    |
-|---------------------------|--------------------------------------------------------|---------|
-| `base.yaml`               | atoms-only, gaussian, GVFA                             | ridge   |
-| `edge.yaml`               | + bonds, hadamard binder                               | ridge   |
-| `binding_circular.yaml`   | edge.yaml with circular FFT binder                     | ridge   |
-| `binding_hadamard.yaml`   | explicit hadamard twin of binding_circular             | ridge   |
-| `edge_orthogonal.yaml`    | edge.yaml + orthogonal projection                      | ridge   |
-| `edge_bounded.yaml`       | extended atoms + bonds + bounded scaling + orthogonal  | ridgecv |
-| `sigma_pi.yaml`           | edge_bounded + Sigma-Pi expansion (orders 0,1,2)       | ridgecv |
-| `reservoir.yaml`          | edge_bounded + reservoir tap-buffer + Sigma-Pi (4 hops)| ridgecv |
-| `traditional_baseline.yaml`| RDKit descriptors → XGBoost (no GVFA)                 | xgboost |
+| YAML                          | Encoder path                                            | Head    |
+|-------------------------------|---------------------------------------------------------|---------|
+| `base.yaml`                   | atoms-only, gaussian, GVFA                              | ridge   |
+| `edge.yaml`                   | + bonds, hadamard binder                                | ridge   |
+| `binding_circular.yaml`       | edge.yaml with circular FFT binder                      | ridge   |
+| `binding_hadamard.yaml`       | explicit hadamard twin of binding_circular              | ridge   |
+| `edge_orthogonal.yaml`        | edge.yaml + orthogonal projection                       | ridge   |
+| `edge_bounded.yaml`           | extended atoms + bonds + bounded scaling + orthogonal   | ridgecv |
+| `sigma_pi.yaml`               | edge_bounded + Sigma-Pi expansion (orders 0,1,2)        | ridgecv |
+| `reservoir.yaml`              | edge_bounded + reservoir tap-buffer + Sigma-Pi (4 hops) | ridgecv |
+| `traditional_baseline.yaml`   | RDKit descriptors → XGBoost (no GVFA)                   | xgboost |
+| `best3.yaml`                  | Best3 sequence: raw orthogonal projection, phi1+sign, edge=circular, reservoir+Sigma-Pi[0,1], multi_stat, sqrt_n + raw size append | ridgecv |
+| `best3_no_size_aware.yaml`    | best3.yaml with `pooler.size_aware` disabled (ablation) | ridgecv |
+| `best3_clean_sequence.yaml`   | Fixed one-seed wiring check on the legacy solubility_novel CSVs, using modular SMILES chemistry | ridgecv |
+
+## New knobs added by the Best3 port
+
+- **`pooler.kind: multi_stat`** — readout = `concat[mean(F_v) | max(F_v) | mean(bind(F_v, F_v))]`
+  per graph → `[num_graphs, 3·D]`. Reuses `gvfa.operations.bind` for the
+  squared-mean term. The two non-squared stats match a standard mean+max
+  pool; the third adds an HV second-order term.
+- **`pooler.size_aware`** — per-graph post-pool transforms:
+  - `scale: none | sqrt_n | n | n_pow_1_5` — divides each row by `N^p`.
+  - `append_size: bool`, `append_size_kind: raw | log1p_over_log10` —
+    optionally append a size column. Use `raw` to mirror Best3, the
+    log1p form to keep the column comparable in magnitude to bipolar HVs.
+- **`seeds: [int, ...]`** (top level) — when set, the pipeline runs
+  one (project → encode → pool → head → metrics) pass per seed,
+  reusing the (expensive) featurization across seeds. Output reports
+  mean ± std across seeds. Falls back to single-seed when omitted.
+- **Head controls** — `head.standardize` toggles `StandardScaler` before the
+  regression head. `head.alphas_logspace` can generate RidgeCV grids such as
+  `np.logspace(-4, 2, 50)`, and `head.ridgecv_cv` / `head.ridgecv_scoring`
+  expose the legacy `cv=5, scoring="neg_mean_squared_error"` setup.
+
+## Best3 sequence audit
+
+Use `best3_clean_sequence.yaml` when you want to check the modular operation
+order against the intended legacy Best3 recipe without doing a hyperparameter
+search:
+
+```bash
+python -m gvfa.experiments.molecular_solubility.run \
+    --config gvfa/experiments/molecular_solubility/configs/best3_clean_sequence.yaml \
+    --override logging.out_dir=/private/tmp/gvfa_sequence_check
+```
+
+The modular path intentionally keeps chemically correct SMILES-derived atom
+and bond features. Exact metric parity with `GVFA_with_edge` is not expected:
+the legacy graph builder reconstructs an RDKit molecule from atomic numbers
+and connectivity, which makes all reconstructed bonds single bonds and also
+double-counts the directed edge list when computing the degree feature. To
+inspect those differences directly:
+
+```bash
+python -m gvfa.experiments.molecular_solubility.compare_legacy_featurizers --limit 5
+```
+
+## Phi mapping for the legacy `equation` field
+
+The legacy `models/graphcnnVSA_Binding_FULL.py:next_layer_eps` switches between
+two per-layer formulas via the `equation` arg:
+
+| Legacy `(equation, delta)` | Per-layer formula                          | Base-library equivalent          |
+|----------------------------|--------------------------------------------|----------------------------------|
+| `(10, 0)`                  | `sign(aggregate(roll(h)) + h)`             | **`phi1` + `sign`-normalize**    |
+| `(10, 1)`                  | `sign(bind(h, aggregate(roll(h))) + h)`    | **`phi2` + `sign`-normalize**    |
+| `(10, 2)`                  | `sign(bind(h, agg(roll(h))) + h + agg(roll(h)))` | (no stock phi — custom combine) |
+| `(11, 0)`                  | `sign(roll(aggregate(h) + h))`             | **`phi3` + `sign`-normalize**    |
+| `(11, 1)`                  | `sign(roll(bind(h, aggregate(h)) + h))`    | **`phi4` + `sign`-normalize**    |
+| `(11, 2)`                  | `sign(roll(bind(h, agg(h)) + h + agg(h)))` | (no stock phi — custom combine) |
+
+Two identities make the equation=10 and equation=11 columns map onto the
+same four phi functions:
+
+1. **Aggregation commutes with cyclic shift.** `aggregate(roll(h)) = roll(aggregate(h))`
+   because aggregation is a sum, and `roll` is a linear operator.
+
+2. **Circular FFT bind commutes with cyclic shift on either argument.**
+   By the frequency-shift identity `fft(roll(x, k)) = fft(x) · exp(-2πik/N)`,
+   the phase factor pulls out of the FFT product, giving
+   `bind(a, roll(b, k)) = roll(bind(a, b), k) = bind(roll(a, k), b)`.
+   *This identity is specific to circular FFT bind — Hadamard bind
+   does NOT commute with `roll`.*
+
+So `equation=10` (rotate `h` BEFORE aggregating, no rotation at the end)
+produces the same algebraic expression as `equation=11` (no pre-rotation,
+rotate the FINAL sum) — modulo the `+h` term, which is what shifts each
+`equation=10` row to a one-lower phi index than its `equation=11` twin
+(`(10,δ) → phi(δ+1)` ... `(11,δ) → phi(δ+3)`).
+
+`delta=2` is a 3-term combine `(bind(h,f) + h + f)` that doesn't appear
+in the four-phi catalog — using it would require a custom combine
+function or a small extension to `gvfa.models.combine`.
 
 ## Parity with the legacy code
 
@@ -137,7 +221,7 @@ Traditional_features}` folders each implemented one of the above ablations
 as a near-copy of the full pipeline. Every novel idea (orthogonal
 projection, bounded scaling, edge binding, Sigma-Pi, reservoir) is now a
 swappable stage in this pipeline; the old folders are kept as a read-only
-reference until numerical parity is confirmed.
+reference for operation-sequence audits and metric comparisons.
 
 The mapping from legacy classes to new primitives is documented in
 `/Users/sachinkahawala/.claude/plans/i-have-the-original-peaceful-hollerith.md`.

@@ -1,0 +1,91 @@
+# Canonical modular Best3 sequence check.
+#
+# This keeps the modular pipeline's chemically correct SMILES-based
+# featurization, while matching the intended legacy operation order:
+# projection -> edge-aware GVFA -> reservoir -> Sigma-Pi -> multi-stat pool
+# -> size-aware post -> raw RidgeCV.
+#
+# It is not expected to reproduce legacy metrics exactly because the legacy
+# GVFA_with_edge graph builder reconstructs RDKit molecules from atomic
+# numbers and edges, losing bond order/aromaticity during feature generation.
+
+seed: 0
+descriptors_only: false
+
+dataset:
+  kind: csv
+  csv_path: ../Molecular_Solubility/GVFA_with_edge/final_data/solubility_1.csv
+  test_csv_path: ../Molecular_Solubility/GVFA_with_edge/final_data/testset_novel.csv
+  smiles_col: SMILES
+  target_col: logS
+
+split:
+  kind: explicit
+
+featurizer:
+  atom_features:
+    - atomic_number
+    - degree
+    - valence_electrons
+    - hybridization
+    - aromaticity_z
+    - formal_charge
+    - hbond_flags
+    - chirality
+    - num_attached_h
+    - gasteiger_charge
+    - crippen_logp
+    - tpsa_contrib
+    - is_in_aromatic_ring
+    - smallest_ring_size
+  bond_features:
+    - bond_type
+    - is_conjugated
+    - in_ring
+    - bond_length_3d
+    - stereo
+
+projection:
+  D: 2000
+  kind: orthogonal
+  seed: 0
+  sign_normalize: false
+  scaler: { enabled: false }
+  bond_kind: orthogonal
+  bond_seed: 0
+  bond_sign_normalize: false
+  bond_scaler: { enabled: false }
+
+edge_binder:
+  kind: circular
+
+encoder:
+  num_layers: 4
+  phi: phi1
+  normalize: sign
+
+augmentation:
+  kind: reservoir_sigma_pi
+  hop_decay: 0.85
+  sigma_pi_orders: [0, 1]
+  sigma_pi_bind_kind: circular
+  normalize: true
+
+pooler:
+  kind: multi_stat
+  multi_stat_bind_kind: circular
+  size_aware:
+    scale: sqrt_n
+    append_size: true
+    append_size_kind: raw
+
+head:
+  kind: ridgecv
+  standardize: false
+  alphas_logspace: { start_exp: -2, stop_exp: 2, num: 5 }
+  ridgecv_cv: 5
+  ridgecv_scoring: neg_mean_squared_error
+
+logging:
+  out_dir: results/molecular_solubility
+  run_name: best3_clean_sequence

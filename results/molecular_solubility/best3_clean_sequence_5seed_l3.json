@@ -1,0 +1,225 @@
+{
+  "config": {
+    "seed": 0,
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "descriptors_only": false,
+    "dataset": {
+      "kind": "csv",
+      "csv_path": "../Molecular_Solubility/GVFA_with_edge/final_data/solubility_1.csv",
+      "test_csv_path": "../Molecular_Solubility/GVFA_with_edge/final_data/testset_novel.csv",
+      "smiles_col": "SMILES",
+      "target_col": "logS",
+      "moleculenet_name": null,
+      "moleculenet_root": "./data"
+    },
+    "split": {
+      "kind": "explicit",
+      "train_ratio": 0.8,
+      "k": 5,
+      "seed": 42
+    },
+    "featurizer": {
+      "atom_features": [
+        "atomic_number",
+        "degree",
+        "valence_electrons",
+        "hybridization",
+        "aromaticity_z",
+        "formal_charge",
+        "hbond_flags",
+        "chirality",
+        "num_attached_h",
+        "gasteiger_charge",
+        "crippen_logp",
+        "tpsa_contrib",
+        "is_in_aromatic_ring",
+        "smallest_ring_size"
+      ],
+      "bond_features": [
+        "bond_type",
+        "is_conjugated",
+        "in_ring",
+        "bond_length_3d",
+        "stereo"
+      ],
+      "descriptors": false,
+      "descriptor_names": null,
+      "embed_seed": 61453
+    },
+    "projection": {
+      "D": 2000,
+      "kind": "orthogonal",
+      "seed": 0,
+      "sign_normalize": false,
+      "scaler": {
+        "enabled": false,
+        "binary_cols": [],
+        "minmax_cols": [],
+        "tanh_cols": {},
+        "use_extended_atom_defaults": false,
+        "use_default_bond_cols": false
+      },
+      "bond_D": null,
+      "bond_kind": "orthogonal",
+      "bond_seed": 0,
+      "bond_sign_normalize": false,
+      "bond_scaler": {
+        "enabled": false,
+        "binary_cols": [],
+        "minmax_cols": [],
+        "tanh_cols": {},
+        "use_extended_atom_defaults": false,
+        "use_default_bond_cols": false
+      }
+    },
+    "edge_binder": {
+      "kind": "circular"
+    },
+    "encoder": {
+      "num_layers": 10,
+      "phi": "phi1",
+      "normalize": "sign",
+      "kappa": 1.0
+    },
+    "augmentation": {
+      "kind": "reservoir_sigma_pi",
+      "hop_decay": 0.85,
+      "sigma_pi_orders": [
+        0,
+        1
+      ],
+      "sigma_pi_bind_kind": "circular",
+      "normalize": true
+    },
+    "pooler": {
+      "kind": "multi_stat",
+      "multi_stat_bind_kind": "circular",
+      "size_aware": {
+        "scale": "sqrt_n",
+        "append_size": true,
+        "append_size_kind": "raw"
+      }
+    },
+    "head": {
+      "kind": "ridgecv",
+      "standardize": false,
+      "alpha": 1.0,
+      "alphas": [
+        0.001,
+        0.01,
+        0.1,
+        1.0,
+        10.0,
+        100.0
+      ],
+      "alphas_logspace": {
+        "start_exp": -2,
+        "stop_exp": 2,
+        "num": 5
+      },
+      "ridgecv_cv": 5,
+      "ridgecv_scoring": "neg_mean_squared_error",
+      "kernel_gamma": null,
+      "n_estimators": 2000,
+      "max_depth": 7,
+      "learning_rate": 0.05
+    },
+    "logging": {
+      "out_dir": "results/molecular_solubility",
+      "run_name": "best3_clean_sequence_5seed_l3",
+      "verbose": true,
+      "progress_interval": 500
+    }
+  },
+  "result": {
+    "run_name": "best3_clean_sequence_5seed_l3",
+    "elapsed_sec": 625.6193840503693,
+    "folds": [
+      {
+        "rmse": 0.6207181601771001,
+        "std_err": 0.6196229739515117,
+        "mae": 0.5082253909880116,
+        "r2": 0.5113893869959617,
+        "pearson": 0.7174089753694449,
+        "pearson_r": 0.7174089753694449,
+        "pearson_r2": 0.5146756379406369,
+        "fold": 0,
+        "seed": 0,
+        "n_train": 9943,
+        "n_test": 62
+      },
+      {
+        "rmse": 0.6936009130126174,
+        "std_err": 0.6800252064777542,
+        "mae": 0.5738126308687271,
+        "r2": 0.38991084494543204,
+        "pearson": 0.6873710673823301,
+        "pearson_r": 0.6873710673823301,
+        "pearson_r2": 0.47247898427432383,
+        "fold": 0,
+        "seed": 1,
+        "n_train": 9943,
+        "n_test": 62
+      },
+      {
+        "rmse": 0.7174780933204238,
+        "std_err": 0.6654164982681274,
+        "mae": 0.6224180383066977,
+        "r2": 0.3471832584183143,
+        "pearson": 0.6801853328846542,
+        "pearson_r": 0.6801853328846542,
+        "pearson_r2": 0.46265208707140787,
+        "fold": 0,
+        "seed": 2,
+        "n_train": 9943,
+        "n_test": 62
+      },
+      {
+        "rmse": 0.59533000987091,
+        "std_err": 0.5950438160397015,
+        "mae": 0.49366338406839677,
+        "r2": 0.5505415564878414,
+        "pearson": 0.7737684158857883,
+        "pearson_r": 0.7737684158857883,
+        "pearson_r2": 0.5987175614224022,
+        "fold": 0,
+        "seed": 3,
+        "n_train": 9943,
+        "n_test": 62
+      },
+      {
+        "rmse": 0.7938867943690862,
+        "std_err": 0.778937014673649,
+        "mae": 0.6497968050741381,
+        "r2": 0.20073435036566156,
+        "pearson": 0.5869484910545758,
+        "pearson_r": 0.5869484910545758,
+        "pearson_r2": 0.34450853115124347,
+        "fold": 0,
+        "seed": 4,
+        "n_train": 9943,
+        "n_test": 62
+      }
+    ],
+    "rmse_mean": 0.6842027941500275,
+    "std_err_mean": 0.6678091018821488,
+    "mae_mean": 0.5695832498611942,
+    "r2_mean": 0.39995187944264227,
+    "pearson_mean": 0.6891364565153586,
+    "pearson_r_mean": 0.6891364565153586,
+    "pearson_r2_mean": 0.47860656037200294,
+    "rmse_std": 0.07092928959645418,
+    "std_err_std": 0.06343667789791747,
+    "mae_std": 0.06127353399500596,
+    "r2_std": 0.12463429909330294,
+    "pearson_std": 0.06080711038569426,
+    "pearson_r_std": 0.06080711038569426,
+    "pearson_r2_std": 0.08246454362694922
+  }
+}

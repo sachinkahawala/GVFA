@@ -1,0 +1,149 @@
+{
+  "config": {
+    "seed": 42,
+    "seeds": null,
+    "descriptors_only": true,
+    "dataset": {
+      "kind": "csv",
+      "csv_path": "../Molecular_Solubility/GVFA_with_edge/final_data/solubility_1.csv",
+      "test_csv_path": "../Molecular_Solubility/GVFA_with_edge/final_data/testset_novel.csv",
+      "smiles_col": "SMILES",
+      "target_col": "logS",
+      "moleculenet_name": null,
+      "moleculenet_root": "./data"
+    },
+    "split": {
+      "kind": "explicit",
+      "train_ratio": 0.8,
+      "k": 5,
+      "seed": 42
+    },
+    "featurizer": {
+      "atom_features": [
+        "atomic_number",
+        "degree",
+        "valence_electrons",
+        "hybridization",
+        "hbond_flags"
+      ],
+      "bond_features": null,
+      "descriptors": false,
+      "descriptor_names": null,
+      "embed_seed": 61453
+    },
+    "projection": {
+      "D": 5000,
+      "kind": "gaussian",
+      "seed": 42,
+      "sign_normalize": true,
+      "scaler": {
+        "enabled": false,
+        "binary_cols": [],
+        "minmax_cols": [],
+        "tanh_cols": {},
+        "use_extended_atom_defaults": false,
+        "use_default_bond_cols": false
+      },
+      "bond_D": null,
+      "bond_kind": null,
+      "bond_seed": 43,
+      "bond_sign_normalize": null,
+      "bond_scaler": {
+        "enabled": false,
+        "binary_cols": [],
+        "minmax_cols": [],
+        "tanh_cols": {},
+        "use_extended_atom_defaults": false,
+        "use_default_bond_cols": false
+      }
+    },
+    "edge_binder": {
+      "kind": "none"
+    },
+    "encoder": {
+      "num_layers": 3,
+      "phi": "phi3",
+      "normalize": "sign",
+      "kappa": 1.0
+    },
+    "augmentation": {
+      "kind": null,
+      "hop_decay": 0.85,
+      "sigma_pi_orders": [
+        0,
+        1,
+        2
+      ],
+      "sigma_pi_bind_kind": "hadamard",
+      "normalize": true
+    },
+    "pooler": {
+      "kind": "sum",
+      "multi_stat_bind_kind": "circular",
+      "size_aware": {
+        "scale": "none",
+        "append_size": false,
+        "append_size_kind": "raw"
+      }
+    },
+    "head": {
+      "kind": "xgboost",
+      "standardize": true,
+      "alpha": 1.0,
+      "alphas": [
+        0.001,
+        0.01,
+        0.1,
+        1.0,
+        10.0,
+        100.0
+      ],
+      "alphas_logspace": null,
+      "ridgecv_cv": null,
+      "ridgecv_scoring": null,
+      "kernel_gamma": null,
+      "n_estimators": 2000,
+      "max_depth": 7,
+      "learning_rate": 0.05
+    },
+    "logging": {
+      "out_dir": "results/molecular_solubility",
+      "run_name": "traditional_baseline_novel",
+      "verbose": true,
+      "progress_interval": 500
+    }
+  },
+  "result": {
+    "run_name": "traditional_baseline_novel",
+    "elapsed_sec": 14.207123041152954,
+    "folds": [
+      {
+        "rmse": 1.001863811209702,
+        "std_err": 0.9043856903563042,
+        "mae": 0.822713249206543,
+        "r2": -0.27289148551934894,
+        "pearson": 0.493890397422128,
+        "pearson_r": 0.493890397422128,
+        "pearson_r2": 0.24392772466578752,
+        "fold": 0,
+        "seed": 42,
+        "n_train": 9943,
+        "n_test": 62
+      }
+    ],
+    "rmse_mean": 1.001863811209702,
+    "std_err_mean": 0.9043856903563042,
+    "mae_mean": 0.822713249206543,
+    "r2_mean": -0.27289148551934894,
+    "pearson_mean": 0.493890397422128,
+    "pearson_r_mean": 0.493890397422128,
+    "pearson_r2_mean": 0.24392772466578752,
+    "rmse_std": 0.0,
+    "std_err_std": 0.0,
+    "mae_std": 0.0,
+    "r2_std": 0.0,
+    "pearson_std": 0.0,
+    "pearson_r_std": 0.0,
+    "pearson_r2_std": 0.0
+  }
+}

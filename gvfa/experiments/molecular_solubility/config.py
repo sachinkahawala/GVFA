@@ -116,17 +116,31 @@ class AugmentationConfig:
 
 
 @dataclass
+class SizeAwareConfig:
+    """Per-graph post-pool size-aware transforms. Off by default."""
+    scale: str = "none"             # "none" | "sqrt_n" | "n" | "n_pow_1_5"
+    append_size: bool = False
+    append_size_kind: str = "raw"   # "raw" | "log1p_over_log10"
+
+
+@dataclass
 class PoolerConfig:
-    kind: str = "sum"  # "sum" | "mean"
+    kind: str = "sum"  # "sum" | "mean" | "multi_stat"
+    multi_stat_bind_kind: str = "circular"  # "circular" | "hadamard"
+    size_aware: SizeAwareConfig = field(default_factory=SizeAwareConfig)
 
 
 @dataclass
 class HeadConfig:
     kind: str = "ridge"  # "ridge" | "ridgecv" | "kernel_ridge" | "xgboost" | "random_forest"
+    standardize: bool = True
     alpha: float = 1.0
     alphas: List[float] = field(
         default_factory=lambda: [1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0]
     )
+    alphas_logspace: Optional[Dict[str, float]] = None
+    ridgecv_cv: Optional[int] = None
+    ridgecv_scoring: Optional[str] = None
     kernel_gamma: Optional[float] = None
     # XGBoost / RF
     n_estimators: int = 2000
@@ -138,11 +152,14 @@ class HeadConfig:
 class LoggingConfig:
     out_dir: str = "results/molecular_solubility"
     run_name: str = "default"
+    verbose: bool = True
+    progress_interval: int = 500
 
 
 @dataclass
 class PipelineConfig:
     seed: int = 42
+    seeds: Optional[List[int]] = None  # if set, sweep these seeds (project-encode-fit per seed)
     descriptors_only: bool = False  # traditional baseline: skip GVFA, use descriptors as features
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     split: SplitConfig = field(default_factory=SplitConfig)

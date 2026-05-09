@@ -1,0 +1,131 @@
+# Best3 operation-sequence port from
+# `Molecular_Solubility/GVFA_with_edge/GVFA_edge_main.py:194-199`.
+#
+# Legacy invocation:
+#   python GVFA_edge_main.py --seeds 0,1,2,3,4 --dims 2000 --sigma_pi "0,1"
+#
+# Legacy hardcoded model constants (positional args to GraphCNN, line 195):
+#   num_layers=4, delta=0, equation=10, edge_feat_dim=5,
+#   edge_projection_type="orthogonal", use_reservoir=True, hop_decay=0.85,
+#   sigma_pi_orders=[0,1]
+#
+# Mapping to this pipeline:
+#   delta=0, equation=10  ⇔  encoder.phi=phi1 + encoder.normalize=sign
+#       Per-layer step in legacy: rotated = roll(h, 1); pooled = pool(rotated);
+#       pooled = pooled + h; sign(pooled).
+#       Equivalently: sign(aggregate(permute(h)) + h) = sign(h + permute(aggregate(h)))
+#       since cyclic permutation commutes with both element-wise sum AND
+#       circular FFT bind. That right-hand expression is exactly phi1+sign:
+#       phi1(h, f) = h + permute(f), then sign-normalize.
+#       (Verified against next_layer_eps lines 347-397 of the legacy GraphCNN.)
+#   use_reservoir=True + sigma_pi_orders=[0,1]  ⇔  augmentation=reservoir_sigma_pi
+#   multi_stat_pool readout (mean | max | mean(bind(F,F)))  ⇔  pooler=multi_stat
+#   getEmbedding 1/√N + raw atom-count append  ⇔  size_aware.scale=sqrt_n + append_size
+#
+# This config keeps the modular pipeline's SMILES-derived chemistry. The
+# legacy graph builder reconstructs molecules from atomic numbers and
+# connectivity, losing bond orders/aromaticity, so exact metric parity is not
+# expected even when the operation sequence matches.
+#
+# Reference numbers captured from the legacy script
+# (`python GVFA_edge_main.py --seeds 0 --dims 2000 --sigma_pi "0,1"` → tee log,
+#  exit 0 in 28m17s on Apple Silicon CPU). Default dataset = "solubility_novel"
+# (train: solubility_1.csv 9943 mols, test: testset_novel.csv 62 mols):
+#   Dim=2000  sigma_pi=[0,1]  (o0_o1)  RMSE=0.5793  STD_err=0.5603
+#                                       MAE=0.4805  R2_COD=0.5744  Pearson_R2=0.6092
+# NOTE: this YAML's default dataset paths point at the larger
+# `final_unique_train/test` pair (17.9k/1.3k mols). To reproduce parity against
+# the legacy reference above, override at the CLI:
+#   --override "dataset.csv_path=../Molecular_Solubility/GVFA_with_edge/final_data/solubility_1.csv"
+#   --override "dataset.test_csv_path=../Molecular_Solubility/GVFA_with_edge/final_data/testset_novel.csv"
+#   --override dataset.smiles_col=SMILES --override dataset.target_col=logS
+# (The 62-row test set has high seed-to-seed variance; treat single-seed
+# numbers as anecdotal and rely on the 5-seed mean ± std for parity.)
+
+seed: 0
+seeds: [0, 1, 2, 3, 4]
+descriptors_only: false
+
+dataset:
+  kind: csv
+  csv_path: data/solubility/train.csv
+  test_csv_path: data/solubility/test.csv
+  smiles_col: smiles_canon
+  target_col: LogS
+
+split:
+  kind: explicit
+
+featurizer:
+  # Extended atom feature set (18 columns) matching the legacy
+  # `expand_atomic_features` output on the GVFA_with_edge branch.
+  atom_features:
+    - atomic_number
+    - degree
+    - valence_electrons
+    - hybridization
+    - aromaticity_z
+    - formal_charge
+    - hbond_flags
+    - chirality
+    - num_attached_h
+    - gasteiger_charge
+    - crippen_logp
+    - tpsa_contrib
+    - is_in_aromatic_ring
+    - smallest_ring_size
+  # Extended bond feature set (5 columns) — Best3's `bond_node_features_geognn`
+  # with stereo. 3D conformer is generated lazily for `bond_length_3d`.
+  bond_features:
+    - bond_type
+    - is_conjugated
+    - in_ring
+    - bond_length_3d
+    - stereo
+
+projection:
+  D: 2000
+  kind: orthogonal           # Best3: edge_projection_type="orthogonal"
+  seed: 0                    # overridden per-seed by the seed sweep
+  sign_normalize: false      # legacy VSA_conversion projects raw real-valued HVs
+  scaler:
+    enabled: false           # Best3 removed feature bounding (verified Best2..Best3 diff)
+  bond_kind: orthogonal
+  bond_seed: 0               # legacy GraphCNN edge projection uses the run seed
+  bond_sign_normalize: false # legacy edge projection stays real-valued before binding
+  bond_scaler:
+    enabled: false
+
+edge_binder:
+  kind: circular             # Best3 `bind()` is FFT circular convolution
+
+encoder:
+  num_layers: 4              # Best3 hardcoded
+  phi: phi1                  # equivalent of equation=10, delta=0 per-layer step
+  normalize: sign            # `torch.sign(pooled)` at end of next_layer_eps
+
+augmentation:
+  kind: reservoir_sigma_pi   # Best3 path: tap_buffer → sigma_pi_expansion
+  hop_decay: 0.85
+  sigma_pi_orders: [0, 1]
+  sigma_pi_bind_kind: circular
+  normalize: true            # legacy L2-normalises tap-buffer + sigma-pi result
+
+pooler:
+  kind: multi_stat           # concat[mean, max, mean(bind(F,F))]
+  multi_stat_bind_kind: circular
+  size_aware:
+    scale: sqrt_n            # divide each graph emb by √N
+    append_size: true        # append raw atom count (Best3 used raw, not log1p)
+    append_size_kind: raw
+
+head:
+  kind: ridgecv
+  standardize: false
+  alphas_logspace: { start_exp: -2, stop_exp: 2, num: 5 }
+  ridgecv_cv: 5
+  ridgecv_scoring: neg_mean_squared_error
+
+logging:
+  out_dir: results/molecular_solubility
+  run_name: best3

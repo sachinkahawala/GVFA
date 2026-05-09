@@ -1,0 +1,114 @@
+# Legacy-aligned feature ablation for the Best3/Best5 sequence.
+#
+# Purpose:
+#   Test whether the modular pipeline improves when we remove the chemistry
+#   fields that the active legacy branch cannot represent reliably.
+#
+# Important:
+#   This is NOT a bug-compatible reproduction. The modular pipeline still
+#   parses real SMILES. It does not reconstruct molecules as neutral/all-single
+#   bonds, and it does not intentionally double degree. This config aligns by
+#   omission: remove the known divergent features instead of copying the bugs.
+#
+# Same operation order as best3_clean_sequence:
+#   projection -> edge-aware GVFA -> reservoir -> Sigma-Pi -> multi-stat pool
+#   -> size-aware post -> RidgeCV.
+
+seed: 0
+descriptors_only: false
+
+dataset:
+  kind: csv
+  csv_path: ../Molecular_Solubility/GVFA_with_edge/final_data/solubility_1.csv
+  test_csv_path: ../Molecular_Solubility/GVFA_with_edge/final_data/testset_novel.csv
+  smiles_col: SMILES
+  target_col: logS
+
+split:
+  kind: explicit
+
+featurizer:
+  atom_features:
+    # Kept: atomic-number-derived features. These mostly survive the legacy
+    # reconstruction because they depend on Z rather than true bond chemistry.
+    - atomic_number
+    - valence_electrons
+    - hybridization
+    - aromaticity_z
+    - hbond_flags
+
+    # Kept: topological ring size. Legacy loses aromaticity, but the graph
+    # connectivity still contains rings, so this is closer to aligned than
+    # RDKit true aromatic flags.
+    - smallest_ring_size
+
+    # Removed versus best3_clean_sequence:
+    #   degree              legacy doubles it by counting directed edges twice
+    #   formal_charge       legacy reconstructed atoms default to neutral
+    #   chirality           legacy reconstruction loses CIP stereochemistry
+    #   num_attached_h      legacy all-single chemistry changes H estimates
+    #   gasteiger_charge    computed on different chemistry in legacy
+    #   crippen_logp        computed on different chemistry in legacy
+    #   tpsa_contrib        computed on different chemistry in legacy
+    #   is_in_aromatic_ring legacy all-single reconstruction removes aromaticity
+
+  bond_features:
+    # Minimal edge features. Keeping bond_type gives every edge a nonzero
+    # carrier vector for edge-aware message passing. This is still a known
+    # difference: legacy sees all bonds as SINGLE after reconstruction, while
+    # modular sees true SMILES bond orders. A perfect all-single carrier would
+    # need code support for a constant edge feature.
+    - bond_type
+
+    # Kept: ring topology usually survives the legacy reconstruction.
+    - in_ring
+
+    # Removed versus best3_clean_sequence:
+    #   is_conjugated   legacy all-single reconstruction makes this mostly false
+    #   bond_length_3d  legacy computes geometry on reconstructed all-single mols
+    #   stereo          legacy reconstruction loses bond stereochemistry
+
+projection:
+  D: 2000
+  kind: orthogonal
+  seed: 0
+  sign_normalize: false
+  scaler: { enabled: false }
+  bond_kind: orthogonal
+  bond_seed: 0
+  bond_sign_normalize: false
+  bond_scaler: { enabled: false }
+
+edge_binder:
+  kind: circular
+
+encoder:
+  num_layers: 4
+  phi: phi1
+  normalize: sign
+
+augmentation:
+  kind: reservoir_sigma_pi
+  hop_decay: 0.85
+  sigma_pi_orders: [0, 1]
+  sigma_pi_bind_kind: circular
+  normalize: true
+
+pooler:
+  kind: multi_stat
+  multi_stat_bind_kind: circular
+  size_aware:
+    scale: sqrt_n
+    append_size: true
+    append_size_kind: raw
+
+head:
+  kind: ridgecv
+  standardize: false
+  alphas_logspace: { start_exp: -2, stop_exp: 2, num: 5 }
+  ridgecv_cv: 5
+  ridgecv_scoring: neg_mean_squared_error
+
+logging:
+  out_dir: results/molecular_solubility
+  run_name: best3_legacy_aligned_ablation

@@ -38,6 +38,8 @@ from .splits import random_split, scaffold_split, kfold_split
 from .datasets import SolubilityDataset, MoleculeNetDataset, index_subset
 from .edge_aware import EdgeBinder, EdgeAwareGVFA, aggregate_with_edges
 from .augmentations import Reservoir, SigmaPi, ReservoirSigmaPi
+from .poolers import MultiStatPool
+from .size_aware import SizeAwarePost
 
 __all__ = [
     # featurizers
@@ -72,4 +74,7 @@ __all__ = [
     "Reservoir",
     "SigmaPi",
     "ReservoirSigmaPi",
+    # poolers + size-aware post
+    "MultiStatPool",
+    "SizeAwarePost",
 ]

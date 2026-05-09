@@ -1,0 +1,90 @@
+# Best3 recipe with size-aware scaling DISABLED.
+#
+# Identical to `best3.yaml` except `pooler.size_aware.scale = none` and
+# `append_size = false`. Run alongside `best3.yaml` to answer the question:
+# "is the 1/√N + appended atom-count load-bearing for the metric?"
+#
+# If this config produces metrics within seed-noise of `best3.yaml`, the
+# size-aware machinery isn't doing meaningful work. If it's measurably worse,
+# it is — and the recipe genuinely benefits from size-aware features.
+
+seed: 0
+seeds: [0, 1, 2, 3, 4]
+descriptors_only: false
+
+dataset:
+  kind: csv
+  csv_path: data/solubility/train.csv
+  test_csv_path: data/solubility/test.csv
+  smiles_col: smiles_canon
+  target_col: LogS
+
+split:
+  kind: explicit
+
+featurizer:
+  atom_features:
+    - atomic_number
+    - degree
+    - valence_electrons
+    - hybridization
+    - aromaticity_z
+    - formal_charge
+    - hbond_flags
+    - chirality
+    - num_attached_h
+    - gasteiger_charge
+    - crippen_logp
+    - tpsa_contrib
+    - is_in_aromatic_ring
+    - smallest_ring_size
+  bond_features:
+    - bond_type
+    - is_conjugated
+    - in_ring
+    - bond_length_3d
+    - stereo
+
+projection:
+  D: 2000
+  kind: orthogonal
+  seed: 0
+  sign_normalize: false
+  scaler: { enabled: false }
+  bond_kind: orthogonal
+  bond_seed: 0
+  bond_sign_normalize: false
+  bond_scaler: { enabled: false }
+
+edge_binder:
+  kind: circular
+
+encoder:
+  num_layers: 4
+  phi: phi1            # eq=10 / delta=0 mapping: see best3.yaml
+  normalize: sign
+
+augmentation:
+  kind: reservoir_sigma_pi
+  hop_decay: 0.85
+  sigma_pi_orders: [0, 1]
+  sigma_pi_bind_kind: circular
+  normalize: true
+
+pooler:
+  kind: multi_stat
+  multi_stat_bind_kind: circular
+  size_aware:
+    scale: none           # << differs from best3.yaml (was sqrt_n)
+    append_size: false    # << differs from best3.yaml (was true)
+
+head:
+  kind: ridgecv
+  standardize: false
+  alphas_logspace: { start_exp: -2, stop_exp: 2, num: 5 }
+  ridgecv_cv: 5
+  ridgecv_scoring: neg_mean_squared_error
+
+logging:
+  out_dir: results/molecular_solubility
+  run_name: best3_no_size_aware
